@@ -1,47 +1,14 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice } from "@reduxjs/toolkit";
 import { URL, pending, error, success } from "../URL";
-
-export const getData = createAsyncThunk("getData", async () => {
-  const response = await fetch(URL);
-  const data = await response.json();
-  return data;
-});
-
-export const deleteItem = createAsyncThunk("deleteItem", async (id) => {
-  const response = await fetch(`${URL}/${id}`, {
-    method: "DELETE",
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Content-Type": "application/json",
-    },
-  });
-  const status = response.status;
-  console.log(status);
-});
-
-export const getItemById = createAsyncThunk("getItemById", async (id) => {
-  const response = await fetch(`${URL}/${id}`, {
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Content-Type": "application/json",
-    },
-  });
-  const data = await response.json();
-  return data;
-});
-
-export const editItem = createAsyncThunk("editItem", async (item) => {
-  const response = await fetch(URL, {
-    method: 'POST',
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(item),
-  });
-  const status = response.status;
-  console.log(status);
-});
+import { ofType } from "redux-observable";
+import { of } from "rxjs";
+import { ajax } from "rxjs/ajax";
+import {
+  map,
+  catchError,
+  retry,
+  mergeMap,
+} from "rxjs/operators";
 
 const data = [];
 const item = {
@@ -69,53 +36,68 @@ export const listSlice = createSlice({
     changeStatus: (state, action) => {
       state.status = action.payload;
     },
-  },
-  extraReducers: (builder) => {
-    builder
-      .addCase(getData.pending, (state) => {
-        state.status = pending;
-      })
-      .addCase(getData.fulfilled, (state, action) => {
-        state.status = success;
-        state.data = action.payload;
-      })
-      .addCase(getData.rejected, (state) => {
-        state.status = error;
-      })
-      .addCase(deleteItem.pending, (state) => {
-        state.status = pending;
-      })
-      .addCase(deleteItem.fulfilled, (state) => {
-        state.status = success;
-      })
-      .addCase(deleteItem.rejected, (state) => {
-        state.status = error;
-      })
-      .addCase(getItemById.pending, (state) => {
-        state.status = pending;
-      })
-      .addCase(getItemById.fulfilled, (state, action) => {
-        state.item = action.payload;
-        state.status = success;
-      })
-      .addCase(getItemById.rejected, (state) => {
-        state.status = error;
-      })
-      .addCase(editItem.pending, (state) => {
-        state.status = pending;
-      })
-      .addCase(editItem.fulfilled, (state) => {
-        state.status = success;
-      })
-      .addCase(editItem.rejected, (state) => {
-        state.status = error;
-      });
+    setData: (state, action) => {
+      state.data = action.payload;
+      state.status = success;
+    },
+    setItem: (state, action) => {
+      state.item = action.payload;
+      state.status = success;
+    },
+    requestData: (state, action) => {
+      state.status = pending;
+    },
+    requestDataById: (state, action) => {
+      state.status = pending;
+    },
   },
 });
 
-// Action creators are generated for each case reducer function
-export const { clearForm, changeForm, changeStatus } = listSlice.actions;
+export const requestDataEpic = (action$) =>
+  action$.pipe(
+    ofType(listSlice.actions.requestData),
+    mergeMap(() =>
+      ajax({
+        url: URL,
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }).pipe(
+        retry(3),
+        map((res) => setData(res.response)),
+        catchError((e) => of(changeStatus(error)))
+      )
+    )
+  );
 
-export const lastId = (state) => state.data[state.data.length - 1].id;
+  export const requestDataByIdEpic = (action$) =>
+  action$.pipe(
+    ofType(listSlice.actions.requestDataById),
+    mergeMap((action) =>
+      ajax({
+        url: `${URL}/${action.payload}`,
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }).pipe(
+        retry(3),
+        map((res) => setItem(res.response)),
+        catchError((e) => of(changeStatus(error)))
+      )
+    )
+  );
+
+// Action creators are generated for each case reducer function
+export const {
+  clearForm,
+  changeForm,
+  changeStatus,
+  setData,
+  requestData,
+  requestDataById,
+  setItem
+} = listSlice.actions;
 
 export default listSlice.reducer;

@@ -1,10 +1,12 @@
 import { useDispatch, useSelector } from "react-redux";
-import { clearForm, changeForm, editItem, getData } from "../reducer/listSlice";
+import { clearForm, changeForm } from "../reducer/listSlice";
 
 
 export default function Form(props) {
   const item = useSelector((state) => state.list.item);
-  console.log(item);
+
+  console.log(item)
+
   const dispatch = useDispatch();
 
   const handleChange = (e) => {
@@ -17,19 +19,8 @@ export default function Form(props) {
     props.history.push(`/`);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    props.history.push(`/`);
-    try {
-      await dispatch(editItem(item));
-      await dispatch(getData());
-    } catch(err) {
-      console.error(err);
-    }
-  };
-
   return (
-    <form onSubmit={handleSubmit}>
+    <form>
       <div className="form-group">
         <label htmlFor="service">Услуга</label>
         <input
@@ -63,11 +54,8 @@ export default function Form(props) {
           id="content"
         />
       </div>
-      <button type="submit" className="btn btn-primary">
-        Сохранить
-      </button>
       <button type="button" className="btn btn-primary" onClick={handleCancel}>
-        Отмена
+        Назад
       </button>
     </form>
   );

@@ -1,8 +1,17 @@
 import { configureStore } from '@reduxjs/toolkit';
-import listSlice from '../reducer/listSlice';
+import listSlice, {requestDataEpic, requestDataByIdEpic} from '../reducer/listSlice';
+import { createEpicMiddleware } from "redux-observable";
 
-export default configureStore({
+const epiccEpicMiddleware = createEpicMiddleware();
+
+export const store = configureStore({
   reducer: {
     list: listSlice,
   },
+  middleware: [
+    epiccEpicMiddleware,
+  ],
 })
+
+epiccEpicMiddleware.run(requestDataEpic);
+epiccEpicMiddleware.run(requestDataByIdEpic);
